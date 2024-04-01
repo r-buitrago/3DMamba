@@ -1,0 +1,6 @@
+name: nuscenes_lidar
+
+params: 
+  _target_: dataloader.nuscenes.NuScenesLidarDataset
+  path: ./data/nuscenes
+  num_classes: 32

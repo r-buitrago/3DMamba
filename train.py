@@ -4,6 +4,7 @@ import hydra
 from hydra.utils import instantiate
 import wandb
 from omegaconf import OmegaConf, DictConfig
+import torch.nn.functional as F
 
 import torch
 from timeit import default_timer
@@ -14,7 +15,7 @@ from utils.evaluator import DummyEvaluator, eval_to_print, eval_to_wandb
 from utils.utils import count_params
 from utils.scheduler import WarmupScheduler
 
-from torch_geometric.loader import DataLoader
+from torch.utils.data import DataLoader
 
 log = get_logger(__name__, level=logging.INFO)
 
@@ -36,17 +37,21 @@ def get_dataset(args, batch_size):
 def learning_step(
     args, model, batch, loss_type, is_training=True, evaluator=DummyEvaluator
 ):
-    batch.to(device)
+    x, y = batch
+    x, y = x.to(device), y.to(device)
     loss_fn = get_loss_value(loss_type)
-    out = model(batch.x, batch.pe, batch.edge_index, batch.edge_attr, batch.batch)
-    loss = loss_fn(out.squeeze(), batch.y)
-    evaluator.evaluate(out.squeeze(), batch.y)
+    out = model(x)
+    one_hot =  F.one_hot(y.long(), num_classes = args.dataset.params.num_classes + 1).float() # +1 for dummy class
+    loss = loss_fn(out, one_hot)
+    evaluator.evaluate(out, one_hot)
     return loss
 
 
 def get_loss_value(loss_type):
     if loss_type == "mse":
         return torch.nn.MSELoss()
+    elif loss_type == "cross_entropy":
+        return torch.nn.CrossEntropyLoss()
     else:
         raise ValueError(f"Loss type {loss_type} not supported")
 
@@ -142,8 +147,8 @@ def _main(args: DictConfig):
         os.makedirs(model_folder_path, exist_ok=True)
     train_loader, test_loader = get_dataset(args, batch_size=args.model.batch_size)
 
-    _data = next(iter(test_loader))
-    print(f"Dataset shape: {_data}")
+    x, y = next(iter(test_loader))
+    log.info(f"Dataset shape: {x.shape}")
 
     model = instantiate(args.model.params)
     model.to(device)
