@@ -1,8 +1,15 @@
 name: PCM
 
 params:
-  _target_: models.PCM.PCM.PointMambaEncoder
-  # num_classes: ${dataset.params.num_classes}
+  _target_: models.PCM.PCM.PointMambaSegmentation
+  in_channels: 5
+  num_classes: ${dataset.params.num_classes}
+  embedding_size: ${.encoder.embed_dim} # 2 x 16, 16 is x2 dim_expansion
+  hidden_dim: 32
+  encoder: 
+    _target_: models.PCM.PCM.PointMambaEncoder
+    in_channels: ${..in_channels}
+    embed_dim: 32
 
 
 optimizer:
@@ -12,7 +19,7 @@ optimizer:
 
 warmup_epochs: 1
 
-batch_size: 2
+batch_size: 1
 
 # scheduler: cosine
 scheduler: step

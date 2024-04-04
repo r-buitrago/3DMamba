@@ -54,7 +54,9 @@ class LocalGrouper(nn.Module):
             new_xyz = xyz  # [B, npoint, 3]
             new_points = points  # [B, npoint, d]
         else:
-            fps_idx = furthest_point_sample(xyz, S).long()  # [B, npoint]
+            # fps_idx = furthest_point_sample(xyz, S).long()  # [B, npoint]
+            # randomly sample points
+            fps_idx = torch.randint(0, N, (B, S), device=xyz.device)
             fps_idx = torch.sort(fps_idx, dim=-1)[0]
             new_xyz = index_points(xyz, fps_idx)  # [B, npoint, 3]
             new_points = index_points(points, fps_idx)  # [B, npoint, d]

@@ -11,12 +11,40 @@ from .PointMLP_layers import ConvBNReLU1D, LocalGrouper, PreExtraction, PreExtra
 from typing import List
 # from ..layers import furthest_point_sample
 
+class PointMambaSegmentation(nn.Module):
+    def __init__(self, encoder, in_channels = 5, embedding_size = 256, num_classes = 32, hidden_dim = 16):
+        super(PointMambaSegmentation, self).__init__()
+        self.encoder = encoder
+        self.embedding_size = embedding_size
+        self.num_classes = num_classes
+        self.hidden_dim = hidden_dim
+
+        self.mlp_in = nn.Sequential(
+            nn.Linear(in_channels, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, hidden_dim),
+        )
+        self.mlp_out = nn.Sequential(
+            nn.Linear(embedding_size + hidden_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, num_classes+1),
+        )
+    
+    def forward(self, x):
+        embedding = self.encoder(x)
+        # append embedding to all x
+        x = self.mlp_in(x)
+        x = torch.cat([x, embedding.unsqueeze(1).repeat(1, x.shape[1], 1)], dim=-1)
+        x = self.mlp_out(x)
+        return x
+        
+
 # @MODELS.register_module()
 class PointMambaEncoder(nn.Module):
-    def __init__(self, in_channels=3, embed_dim=64, groups=1, res_expansion=1.0,
+    def __init__(self, in_channels=3, embed_dim=8, groups=1, res_expansion=1.0,
                  activation="relu", bias=False, use_xyz=False, normalize="anchor",
-                 dim_expansion=[2, 2, 2, 2], pre_blocks=[2, 2, 2, 2], pos_blocks=[2, 2, 2, 2],
-                 k_neighbors=[24, 24, 24, 24], k_strides=[1, 1, 1, 1], reducers=[2, 2, 2, 2],
+                 dim_expansion=[1, 1, 1, 1], pre_blocks=[2, 2, 2, 2], pos_blocks=[2, 2, 2, 2],
+                 k_neighbors=[12, 12, 12, 12], k_strides=[1, 1, 1, 1], reducers=[2, 2, 2, 2],
                  mamba_blocks=[1, 1, 1, 1],
                  mamba_layers_orders='z',
                  use_order_prompt=False, prompt_num_per_order=1,

@@ -4,7 +4,7 @@ from functools import partial
 
 from mamba_ssm.modules.mamba_simple import Mamba
 from mamba_ssm.ops.triton.layernorm import RMSNorm, layer_norm_fn, rms_norm_fn
-from timm.models.layers import DropPath
+from timm.models.layers import DropPath 
 
 class MambaBlock(nn.Module):
     def __init__(
@@ -25,7 +25,8 @@ class MambaBlock(nn.Module):
         The residual needs to be provided (except for the very first block).
         """
         super().__init__()
-        mixer_cls = partial(Mamba, layer_idx=layer_idx, bimamba_type=bimamba_type, **ssm_cfg, **factory_kwargs)
+        # mixer_cls = partial(Mamba, layer_idx=layer_idx, bimamba_type=bimamba_type, **ssm_cfg, **factory_kwargs)
+        mixer_cls = partial(Mamba, layer_idx=layer_idx, **ssm_cfg, **factory_kwargs)
         self.residual_in_fp32 = residual_in_fp32
         self.fused_add_norm = fused_add_norm
         self.mixer = mixer_cls(dim)
