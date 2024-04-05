@@ -1,4 +1,4 @@
-name: nuscenes_lidar
+name: nuscenes_lidar_v1.0
 
 params: 
   _target_: dataloader.nuscenes.NuScenesLidarDataset

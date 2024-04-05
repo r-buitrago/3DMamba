@@ -49,9 +49,9 @@ def learning_step(
 
 def get_loss_value(loss_type):
     if loss_type == "mse":
-        return torch.nn.MSELoss()
+        return torch.nn.MSELoss(reduction="sum")
     elif loss_type == "cross_entropy":
-        return torch.nn.CrossEntropyLoss()
+        return torch.nn.CrossEntropyLoss(reduction="sum")
     else:
         raise ValueError(f"Loss type {loss_type} not supported")
 

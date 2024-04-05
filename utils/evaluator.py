@@ -92,12 +92,15 @@ class LossAccuracyEvaluator(Evaluator):
                           "Accuracy/accuracy": 0.0}
 
     def _evaluate(self, y_pred, y_true):
+        ''' y_pred:  (B, N, C) '''
+        B, N, C = y_pred.shape
         loss = self.loss_fn(y_pred, y_true)
-        self.eval_dict["Loss/loss"] += loss.item()
+        self.eval_dict["Loss/loss"] += loss.item() / N
         # accuracy
-        _, predicted = torch.max(y_pred.data, 1)
-        _, y_true_class = torch.max(y_true.data, 1)
-        correct = (predicted == y_true_class).sum().item()  
+        _, predicted = torch.max(y_pred.data, dim=-1)
+        _, y_true_class = torch.max(y_true.data, dim=-1)
+        # mean over points, but sum over batches (.evaluate takes care of mean later)
+        correct = (predicted == y_true_class).to(dtype=torch.float32).mean(dim=-1).sum().item()
         self.eval_dict["Accuracy/accuracy"] += correct
 
 
