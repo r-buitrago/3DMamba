@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 import torch.nn as nn
 from typing import Dict
 import torch
+from collections import defaultdict
 
 
 def eval_to_wandb(eval_dict: Dict[str, Dict[str, float]], is_train: bool):
@@ -23,7 +24,8 @@ def eval_to_print(eval_dict: Dict[str, Dict[str, float]], is_train: bool):
     print_msg = ""
     suffix = "train" if is_train else "test"
     for key, val in eval_dict.items():
-        print_msg += f" | {key}_{suffix} {val:.5f}"
+        if key.startswith("Loss") or key.startswith("Accuracy/accuracy"):
+            print_msg += f" | {key}_{suffix} {val:.5f}"
     return print_msg
 
 
@@ -94,7 +96,7 @@ class LossAccuracyEvaluator(Evaluator):
     def _evaluate(self, y_pred, y_true):
         ''' y_pred:  (B, N, C) '''
         B, N, C = y_pred.shape
-        loss = self.loss_fn(y_pred, y_true)
+        loss = self.loss_fn(y_pred.reshape(B*N, C), y_true.reshape(B*N, C))
         self.eval_dict["Loss/loss"] += loss.item() / N
         # accuracy
         _, predicted = torch.max(y_pred.data, dim=-1)
@@ -102,6 +104,46 @@ class LossAccuracyEvaluator(Evaluator):
         # mean over points, but sum over batches (.evaluate takes care of mean later)
         correct = (predicted == y_true_class).to(dtype=torch.float32).mean(dim=-1).sum().item()
         self.eval_dict["Accuracy/accuracy"] += correct
+
+class LossAccuracyByClassEvaluator(Evaluator):
+    def _init(self, **kwargs):
+        self.eval_dict = defaultdict(lambda: 0.0)
+
+    def _evaluate(self, y_pred, y_true):
+        ''' y_pred:  (B, N, C) '''
+        B, N, C = y_pred.shape
+        loss = self.loss_fn(y_pred.reshape(B*N, C), y_true.reshape(B*N, C))
+        self.eval_dict["Loss/loss"] += loss.item() / N
+        # accuracy
+        _, predicted = torch.max(y_pred.data, dim=-1)
+        _, y_true_class = torch.max(y_true.data, dim=-1)
+        # mean over points, but sum over batches (.evaluate takes care of mean later)
+        correct = (predicted == y_true_class).to(dtype=torch.float32).sum().item()
+        self.eval_dict["Accuracy/accuracy"] += correct
+        self.eval_dict["Accuracy/accuracy_total_points"] += B*N
+        # accuracy by class
+        for c in range(C):
+            correct = ((predicted == y_true_class) & (y_true_class == c)).to(dtype=torch.float32).mean(dim=-1).sum().item()
+            self.eval_dict[f"Accuracy/class_{c}"] += correct
+            self.eval_dict[f"Accuracy/class_{c}_total_points"] += (y_true_class == c).sum().item()
+    
+    def get_evaluation(self, reset=True) -> Dict[str, Dict[str, float]]:
+        """Flushes the evaluation dictionary and returns the average of the values
+        :return: dictionary of evaluation values
+        """
+        if self.n == 0:
+            return {}
+        avg_dict = {}
+        for key, value in self.eval_dict.items():
+            if key.endswith("total_points"):
+                continue
+            elif key.startswith("Accuracy"):
+                avg_dict[key] = value / self.eval_dict[key + "_total_points"] if self.eval_dict[key + "_total_points"] > 0 else -1
+            else: 
+                avg_dict[key] = value / self.n
+        return avg_dict
+    
+
 
 
 

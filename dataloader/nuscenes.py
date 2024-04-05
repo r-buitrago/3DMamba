@@ -32,9 +32,9 @@ class NuScenesLidarDataset(Dataset):
         if train_version == test_version and test_split is not None:
             split = int(len(self.available_samples) * test_split)
             if if_test:
-                self.available_samples = self.available_samples[split:]
-            else:
                 self.available_samples = self.available_samples[:split]
+            else:
+                self.available_samples = self.available_samples[split:]
 
     def __len__(self):
         return len(self.available_samples)
