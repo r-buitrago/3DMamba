@@ -1,0 +1,21 @@
+name: PointNet
+
+params:
+  _target_: models.pointnet.PointNetPlusPlusSeg
+  num_classes: ${dataset.params.num_classes}
+
+
+optimizer:
+  _target_: torch.optim.Adam
+  lr: 0.001
+  weight_decay: 0.0
+
+warmup_epochs: 1
+
+batch_size: 2
+
+# scheduler: cosine
+scheduler: step
+step_size: 150
+gamma: 0.5
+
