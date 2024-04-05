@@ -1,7 +1,7 @@
 defaults: 
   - _self_
-  - model: PointNet
-  - dataset: nuscenes_lidar
+  - model: PCM
+  - dataset: nuscenes_lidar_v1.0
   - loss: cross_entropy
   - evaluator: loss_accuracy_by_class
   
