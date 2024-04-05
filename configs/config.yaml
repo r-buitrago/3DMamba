@@ -21,7 +21,7 @@ project_name: 3DMamba
 
 wandb:
   tags: []
-  project: ${project_name}
+  project: point-net
   group: 'tmp'
   name: '${model.name}_${dataset.name}_${now:%Y-%m-%d_%H-%M-%S}'
 
