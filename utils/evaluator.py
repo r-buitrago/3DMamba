@@ -123,7 +123,7 @@ class LossAccuracyByClassEvaluator(Evaluator):
         self.eval_dict["Accuracy/accuracy_total_points"] += B*N
         # accuracy by class
         for c in range(C):
-            correct = ((predicted == y_true_class) & (y_true_class == c)).to(dtype=torch.float32).mean(dim=-1).sum().item()
+            correct = ((predicted == y_true_class) & (y_true_class == c)).to(dtype=torch.float32).sum().item()
             self.eval_dict[f"Accuracy/class_{c}"] += correct
             self.eval_dict[f"Accuracy/class_{c}_total_points"] += (y_true_class == c).sum().item()
     
