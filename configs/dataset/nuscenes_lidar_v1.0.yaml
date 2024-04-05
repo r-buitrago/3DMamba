@@ -1,10 +1,11 @@
-name: nuscenes_lidar
+name: nuscenes_lidar_v1.0
 
 params: 
   _target_: dataloader.nuscenes.NuScenesLidarDataset
   path: ./data/nuscenes
   num_classes: 32
-  # max_samples: 16
   # max_points: 12000
-  train_version: v1.0-mini
-  test_version: v1.0-mini
+  max_samples: 1000
+  test_split: 0.1
+  train_version: v1.0-trainval
+  test_version: v1.0-trainval
