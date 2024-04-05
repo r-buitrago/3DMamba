@@ -43,7 +43,7 @@ class PointMambaSegmentation(nn.Module):
 class PointMambaEncoder(nn.Module):
     def __init__(self, in_channels=3, embed_dim=8, groups=1, res_expansion=1.0,
                  activation="relu", bias=False, use_xyz=False, normalize="anchor",
-                 dim_expansion=[1, 1, 1, 1], pre_blocks=[2, 2, 2, 2], pos_blocks=[2, 2, 2, 2],
+                 dim_expansion=[2, 2, 2, 2], pre_blocks=[2, 2, 2, 2], pos_blocks=[2, 2, 2, 2],
                  k_neighbors=[12, 12, 12, 12], k_strides=[1, 1, 1, 1], reducers=[2, 2, 2, 2],
                  mamba_blocks=[1, 1, 1, 1],
                  mamba_layers_orders='z',

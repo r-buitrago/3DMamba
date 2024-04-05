@@ -24,7 +24,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def get_dataset(args, batch_size):
     train_data = instantiate(args.dataset.params)
-    test_data = instantiate(args.dataset.params, split="test")
+    test_data = instantiate(args.dataset.params, if_test=True)
     train_loader = DataLoader(
         train_data, batch_size=batch_size, num_workers=args.num_workers, shuffle=True
     )
@@ -68,7 +68,7 @@ def train(
     model.train()
     t1 = default_timer()
     batch_timer = default_timer()
-    for _, batch in enumerate(train_loader):
+    for i, batch in enumerate(train_loader):
         loss = learning_step(
             args,
             model,
@@ -83,6 +83,7 @@ def train(
             scheduler.step()
         log.debug(f"Training batch time: {default_timer() - batch_timer}")
         batch_timer = default_timer()
+        log.debug(f"Batch: {i}, loss: {loss.item()}, time: {default_timer() - t1}")
     t2 = default_timer()
     return model, t2 - t1
 
@@ -126,6 +127,7 @@ def _main(args: DictConfig):
         if args.wandb.tags is not None:
             run = wandb.init(
                 project=args.wandb.project,
+                entity=args.wandb.entity,
                 group=args.wandb.group,
                 name=args.wandb.name,
                 config=wandb_config,

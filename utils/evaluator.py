@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 import torch.nn as nn
 from typing import Dict
+import torch
 
 
 def eval_to_wandb(eval_dict: Dict[str, Dict[str, float]], is_train: bool):
@@ -35,7 +36,7 @@ class Evaluator(ABC):
 
     @abstractmethod
     def _init(self, **kwargs):
-        """Initializes the evaluation dictionary"""
+        """Initializes the evaluation dictionary""" 
         pass
 
     def reset(self):
@@ -84,3 +85,20 @@ class LossEvaluator(Evaluator):
     def _evaluate(self, y_pred, y_true):
         loss = self.loss_fn(y_pred, y_true)
         self.eval_dict["Loss/loss"] += loss.item()
+
+class LossAccuracyEvaluator(Evaluator):
+    def _init(self, **kwargs):
+        self.eval_dict = {"Loss/loss": 0.0,
+                          "Accuracy/accuracy": 0.0}
+
+    def _evaluate(self, y_pred, y_true):
+        loss = self.loss_fn(y_pred, y_true)
+        self.eval_dict["Loss/loss"] += loss.item()
+        # accuracy
+        _, predicted = torch.max(y_pred.data, 1)
+        _, y_true_class = torch.max(y_true.data, 1)
+        correct = (predicted == y_true_class).sum().item()  
+        self.eval_dict["Accuracy/accuracy"] += correct
+
+
+
