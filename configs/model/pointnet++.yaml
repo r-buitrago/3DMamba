@@ -2,7 +2,7 @@ name: PointNetPlus
 
 params:
   _target_: models.pointnetplus.pointnetplus_seg.PointNetPlusPlusSeg
-  num_classes: ${dataset.params.num_classes}
+  num_class: ${dataset.params.num_classes}
 
 
 optimizer:

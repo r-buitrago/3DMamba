@@ -1,6 +1,6 @@
 import torch.nn as nn
 import torch.nn.functional as F
-from pointnetplus_utils import PointNetSetAbstraction
+from .pointnetplus_utils import PointNetSetAbstraction
 
 
 class PointNetPlusPlusSeg(nn.Module):
