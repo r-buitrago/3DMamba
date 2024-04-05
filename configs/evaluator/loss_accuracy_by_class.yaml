@@ -1,0 +1,5 @@
+train:
+  _target_: utils.evaluator.LossAccuracyByClassEvaluator
+
+test: 
+  _target_: utils.evaluator.LossAccuracyByClassEvaluator

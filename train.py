@@ -42,7 +42,8 @@ def learning_step(
     loss_fn = get_loss_value(loss_type)
     out = model(x)
     one_hot =  F.one_hot(y.long(), num_classes = args.dataset.params.num_classes + 1).float() # +1 for dummy class
-    loss = loss_fn(out, one_hot)
+    B, N, C = out.shape
+    loss = loss_fn(out.reshape(B*N, C), one_hot.reshape(B*N, C))
     evaluator.evaluate(out, one_hot)
     return loss
 
