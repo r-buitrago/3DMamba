@@ -9,7 +9,8 @@ from utils.log_utils import get_logger
 log = get_logger(__name__)
 
 class NuScenesLidarDataset(Dataset):
-    def __init__(self, path, num_classes, max_points=34816, train_version='v1.0-mini', lidarseg_path='lidarseg', test_version='v1.0-mini', if_test=False, max_samples=-1):
+    def __init__(self, path, num_classes, max_points=34816, train_version='v1.0-mini', lidarseg_path='lidarseg',
+                  test_version='v1.0-mini', if_test=False, max_samples=-1, test_split = None):
         version = train_version if not if_test else test_version
         self.nusc = NuScenes(version=version, dataroot=path, verbose=True)
         self.lidarseg_path = os.path.join(path, lidarseg_path, version)
@@ -27,6 +28,13 @@ class NuScenesLidarDataset(Dataset):
                 self.available_samples.append(sample)
             if max_samples > 0 and len(self.available_samples) >= max_samples:
                 break
+        
+        if train_version == test_version and test_split is not None:
+            split = int(len(self.available_samples) * test_split)
+            if if_test:
+                self.available_samples = self.available_samples[split:]
+            else:
+                self.available_samples = self.available_samples[:split]
 
     def __len__(self):
         return len(self.available_samples)
