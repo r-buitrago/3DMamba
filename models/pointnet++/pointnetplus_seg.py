@@ -1,11 +1,11 @@
 import torch.nn as nn
 import torch.nn.functional as F
-from pointnet2_utils import PointNetSetAbstraction
+from pointnetplus_utils import PointNetSetAbstraction
 
 
-class get_model(nn.Module):
-    def __init__(self,num_class,normal_channel=True):
-        super(get_model, self).__init__()
+class PointNetPlusPlusSeg(nn.Module):
+    def __init__(self,num_class=32,normal_channel=True):
+        super(PointNetPlusPlusSeg, self).__init__()
         in_channel = 6 if normal_channel else 3
         self.normal_channel = normal_channel
         self.sa1 = PointNetSetAbstraction(npoint=512, radius=0.2, nsample=32, in_channel=in_channel, mlp=[64, 64, 128], group_all=False)

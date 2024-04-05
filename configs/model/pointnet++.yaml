@@ -1,7 +1,7 @@
-name: PointNet
+name: PointNetPlus
 
 params:
-  _target_: models.pointnet.PointNetPlusPlusSeg
+  _target_: models.pointnet++.pointnetplus_seg.PointNetPlusPlusSeg
   num_classes: ${dataset.params.num_classes}
 
 
