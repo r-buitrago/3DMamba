@@ -15,6 +15,8 @@ from utils.evaluator import DummyEvaluator, eval_to_print, eval_to_wandb
 from utils.utils import count_params
 from utils.scheduler import WarmupScheduler
 
+from utils.loss import FocalLoss
+
 from torch.utils.data import DataLoader
 
 log = get_logger(__name__, level=logging.INFO)
@@ -53,6 +55,8 @@ def get_loss_value(loss_type):
         return torch.nn.MSELoss(reduction="sum")
     elif loss_type == "cross_entropy":
         return torch.nn.CrossEntropyLoss(reduction="sum")
+    elif loss_type == "focal":
+        return FocalLoss()
     else:
         raise ValueError(f"Loss type {loss_type} not supported")
 

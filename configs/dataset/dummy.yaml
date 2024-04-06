@@ -1,0 +1,5 @@
+name: dummy
+
+params: 
+  _target_: dataloader.dummy.DummyDataset
+  num_classes: 32
