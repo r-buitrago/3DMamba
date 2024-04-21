@@ -1,0 +1,13 @@
+#!/bin/bash
+
+#SBATCH --nodes=1
+#SBATCH --job-name=point_cloud_mamba
+#SBATCH --partition=talwalkar_reserved
+#SBATCH --mem=16GB
+#SBATCH --time=30:00:00
+#SBATCH --gres=gpu:1
+#SBATCH -o out_logs/point-net.log
+
+eval "$(conda shell.bash hook)"
+conda activate 3dmamba
+python3 train.py project_name=point-net model=pointnet++ 

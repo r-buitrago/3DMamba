@@ -188,7 +188,15 @@ class MIOU_Evaluator(Evaluator):
             union = ((predicted == c) | (y_true_class == c)).to(dtype=torch.float32).sum().item()
             self.eval_dict[f"class_{c}_intersection"] += intersection
             self.eval_dict[f"class_{c}_union"] += union
-
+        correct = (predicted == y_true_class).to(dtype=torch.float32).sum().item()
+        self.eval_dict["Accuracy/accuracy"] += correct
+        self.eval_dict["Accuracy/accuracy_total_points"] += B*N
+        # accuracy by class
+        for c in range(C):
+            correct = ((predicted == y_true_class) & (y_true_class == c)).to(dtype=torch.float32).sum().item()
+            self.eval_dict[f"Accuracy/class_{c}"] += correct
+            self.eval_dict[f"Accuracy/class_{c}_total_points"] += (y_true_class == c).sum().item()
+    
     def get_evaluation(self, reset=True) -> Dict[str, Dict[str, float]]:
         """Flushes the evaluation dictionary and returns the average of the values
         :return: dictionary of evaluation values
@@ -203,6 +211,11 @@ class MIOU_Evaluator(Evaluator):
             union = self.eval_dict[f"class_{c}_union"]
             miou += intersection / union if union > 0 else 0
             valid_classes += 1 if union > 0 else 0
+
+            key = f"Accuracy/class_{c}"
+            if self.eval_dict[key + "_total_points"] > 0:
+                avg_dict[key] = self.eval_dict[key] / self.eval_dict[key + "_total_points"]
+        avg_dict["Accuracy/accuracy"] = self.eval_dict["Accuracy/accuracy"] / self.eval_dict["Accuracy/accuracy_total_points"]
         avg_dict["MIOU/miou"] = miou / valid_classes
         avg_dict["Loss/loss"] = self.eval_dict["Loss/loss"] / self.total_points
         return avg_dict
