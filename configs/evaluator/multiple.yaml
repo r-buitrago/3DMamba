@@ -1,0 +1,8 @@
+train:
+  _target_: utils.evaluator.MultipleEvaluator
+  evaluators: ["MIOU_Evaluator", "LossAccuracyByClassEvaluator"]
+
+
+test: 
+  _target_: utils.evaluator.MultipleEvaluator
+  evaluators: ["MIOU_Evaluator", "LossAccuracyByClassEvaluator"]
