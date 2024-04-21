@@ -163,7 +163,7 @@ class MIOU_Evaluator(Evaluator):
         :return: dictionary Dict[key: val]
         eg. {"Loss/loss": 0.0}}
         """
-        breakpoint()
+        # breakpoint()
         B, N, C = y_pred.shape
         self.total_points += B*N
         # loss calculation, I am doing it slightly differently than before
