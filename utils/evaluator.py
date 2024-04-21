@@ -144,6 +144,57 @@ class LossAccuracyByClassEvaluator(Evaluator):
         return avg_dict
     
 
+# to be used for MIOU and Loss Calculations
+class MIOU_Evaluator(Evaluator):
 
+    def _init(self, **kwargs):
+        """Initializes the evaluation dictionary""" 
+        self.eval_dict = defaultdict(lambda: 0.0)
+        self.total_points = 0
+
+    def reset(self):
+        # key will be in form of class_i_intersection or class_i_union for all i \in [N] where N is number of classes
+        for key in self.eval_dict:
+            self.eval_dict[key] = 0.0
+        self.total_points = 0
+
+    def _evaluate(self, y_pred, y_true):
+        """Computes the loss
+        :return: dictionary Dict[key: val]
+        eg. {"Loss/loss": 0.0}}
+        """
+        breakpoint()
+        B, N, C = y_pred.shape
+        self.total_points += B*N
+        # loss calculation, I am doing it slightly differently than before
+        loss = self.loss_fn(y_pred.reshape(B*N, C), y_true.reshape(B*N,C))
+        self.eval_dict["Loss/loss"] += loss.item()
+        # MIOU calculation
+        _, predicted = torch.max(y_pred.data, dim=-1)
+        _, y_true_class = torch.max(y_true.data, dim=-1)
+        self.num_classes = y_pred.shape[-1]
+        for c in range(self.num_classes):
+            intersection = ((predicted == y_true_class) & (y_true_class == c)).to(dtype=torch.float32).sum().item()
+            union = ((predicted == c) | (y_true_class == c)).to(dtype=torch.float32).sum().item()
+            self.eval_dict[f"class_{c}_intersection"] += intersection
+            self.eval_dict[f"class_{c}_union"] += union
+
+    def get_evaluation(self, reset=True) -> Dict[str, Dict[str, float]]:
+        """Flushes the evaluation dictionary and returns the average of the values
+        :return: dictionary of evaluation values
+        """
+        if self.total_points == 0:
+            return {}
+        avg_dict = {}
+        miou = 0.0
+        valid_classes = 0
+        for c in range(self.num_classes):
+            intersection = self.eval_dict[f"class_{c}_intersection"]
+            union = self.eval_dict[f"class_{c}_union"]
+            miou += intersection / union if union > 0 else 0
+            valid_classes += 1 if union > 0 else 0
+        avg_dict["MIOU/miou"] = miou / valid_classes
+        avg_dict["Loss/loss"] = self.eval_dict["Loss/loss"] / self.total_points
+        return avg_dict
 
 

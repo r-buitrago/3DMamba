@@ -1,0 +1,5 @@
+train:
+  _target_: utils.evaluator.MIOU_Evaluator
+
+test: 
+  _target_: utils.evaluator.MIOU_Evaluator
