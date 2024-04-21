@@ -4,6 +4,16 @@ from typing import Dict
 import torch
 from collections import defaultdict
 
+def get_loss_value(loss_type):
+    if loss_type == "mse":
+        return torch.nn.MSELoss(reduction="sum")
+    elif loss_type == "cross_entropy":
+        return torch.nn.CrossEntropyLoss(reduction="sum")
+    elif loss_type == "focal":
+        return FocalLoss()
+    else:
+        raise ValueError(f"Loss type {loss_type} not supported")
+
 
 def eval_to_wandb(eval_dict: Dict[str, Dict[str, float]], is_train: bool):
     """Logs the evaluation dictionary to wandb
@@ -209,5 +219,34 @@ class MIOU_Evaluator(Evaluator):
         avg_dict["MIOU/miou"] = miou / valid_classes
         avg_dict["Loss/loss"] = self.eval_dict["Loss/loss"] / self.total_points
         return avg_dict
+    
+EVALUATOR_REGISTRY = {
+    "LossEvaluator": LossEvaluator,
+    "LossAccuracyEvaluator": LossAccuracyEvaluator,
+    "LossAccuracyByClassEvaluator": LossAccuracyByClassEvaluator,
+    "MIOU_Evaluator": MIOU_Evaluator
+}
+    
+class MultipleEvaluator:
+    def __init__(self, loss_fn, evaluators):
+        self.evaluators = [EVALUATOR_REGISTRY[evaluator](loss_fn) for evaluator in evaluators]
+        for evaluator in self.evaluators:
+            evaluator._init()
+    
+    def reset(self):
+        for evaluator in self.evaluators:
+            evaluator.reset()
+    
+    def get_evaluation(self, reset=True) -> Dict[str, Dict[str, float]]:
+        eval_dict = {}
+        for evaluator in self.evaluators:
+            eval_dict.update(evaluator.get_evaluation(reset))
+        return eval_dict
+    
+    def evaluate(self, y_pred, y_true) -> Dict[str, Dict[str, float]]:
+        for evaluator in self.evaluators:
+            evaluator.evaluate(y_pred, y_true)
+
+
 
 

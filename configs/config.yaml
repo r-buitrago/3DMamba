@@ -1,9 +1,9 @@
 defaults: 
   - _self_
-  - model: PCM
+  - model: pointnet++
   - dataset: nuscenes_lidar
   - loss: cross_entropy
-  - evaluator: miou_evaluator
+  - evaluator: multiple
   
 seed: 33
 num_epochs: 100
