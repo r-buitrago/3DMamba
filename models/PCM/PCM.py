@@ -271,7 +271,6 @@ class PointMambaEncoder(nn.Module):
                 x = x.permute(0, 2, 1).contiguous()
                 # in PCM, this is only a nn.Identity
                 x = self.pos_blocks_list[i](x)  # [b,d,g]
-                print(i, j, x.shape)
             x_list.append(x)
 
         # bad? change later
@@ -284,12 +283,9 @@ class PointMambaEncoder(nn.Module):
                 x_max = F.adaptive_max_pool1d(x, 1).squeeze(dim=-1)
                 x_mean = x.mean(dim=-1, keepdim=False)
                 x_list[i] = x_max + x_mean
-            print(x_list[i].shape)
 
         x = torch.cat(x_list, dim=-1)
-        print(x.shape)
         x = self.proj(x)
-        print(x.shape)
         return x
 
     def forward_seg_feat(self, p, x=None):
