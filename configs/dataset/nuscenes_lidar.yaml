@@ -6,5 +6,6 @@ params:
   num_classes: 32
   # max_samples: 16
   # max_points: 12000
+  test_split: 0.1
   train_version: v1.0-mini
   test_version: v1.0-mini
