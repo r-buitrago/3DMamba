@@ -9,11 +9,9 @@ from .PCM_utils import MLP, serialization, _init_weights, index_points
 from .PointMLP_layers import ConvBNReLU1D, LocalGrouper, PreExtraction, PreExtraction_Replace,\
     PosExtraction, get_activation, PointNetFeaturePropagation
 from typing import List
-from collections.abc import Iterable 
+from collections.abc import Iterable
 # from ..layers import furthest_point_sample
 
-
-ORDERS = {"xyz", "xzy", "yxz", "yzx", "zxy", "zyx", "z", "z-trans", "hilbert", "hilbert-trans"}
 # @MODELS.register_module()
 class PointMambaEncoder(nn.Module):
     def __init__(self, in_channels=3, embed_dim=8, groups=1, res_expansion=1.0,
@@ -28,8 +26,7 @@ class PointMambaEncoder(nn.Module):
                  mamba_pos=False, pos_type='share', pos_proj_type="linear",
                  grid_size=0.02, combine_pos=False, block_residual=True,
                  use_windows=False, windows_size=1200,
-                 cls_pooling="max",
-                 parallel_multihead=False,
+                 cls_pooling="max", parallel_multihead=False,
                  **kwargs):
         super(PointMambaEncoder, self).__init__()
 
@@ -46,17 +43,21 @@ class PointMambaEncoder(nn.Module):
         self.combine_pos = combine_pos
         self.local_rank = None
         self.block_residual = block_residual
-        self.parallel_multihead = parallel_multihead
 
         self.stages = len(pre_blocks)
         self.embedding = ConvBNReLU1D(in_channels, embed_dim, bias=bias, activation=activation)
+        self.parallel_multihead = parallel_multihead
 
         # assign serialization order for per mamba layer
         if not isinstance(mamba_layers_orders, Iterable):
             mamba_layers_orders = [mamba_layers_orders for i in range(sum(mamba_blocks))]
         else:
-            assert len(mamba_layers_orders) == sum(mamba_blocks)
+            if not self.parallel_multihead:
+                assert len(mamba_layers_orders) == sum(mamba_blocks)
         self.mamba_layers_orders = mamba_layers_orders
+        if self.parallel_multihead:
+            self.proj = nn.Linear(embed_dim * len(self.mamba_layers_orders), embed_dim)
+
 
         # indicate the current sequence order
         self.order = 'original'
@@ -191,13 +192,6 @@ class PointMambaEncoder(nn.Module):
         self.grid_size = grid_size
         self.cls_pooling = cls_pooling
 
-        if self.parallel_multihead:
-            self.multihead_projection = nn.ModuleList()
-            channels = embed_dim
-            for i in range(len(mamba_blocks)):
-                channels = channels * dim_expansion[i]
-                self.multihead_projection.append(nn.Linear(mamba_blocks[i] * channels, channels, bias=bias))
-
     def forward(self, x, f0=None):
         return self.forward_cls_feat(x, f0)
 
@@ -228,76 +222,74 @@ class PointMambaEncoder(nn.Module):
 
         pos_proj_idx = 0
         mamba_layer_idx = 0
-        for i in range(self.stages):
+        x_list = []
+        for j in range(len(self.mamba_layers_orders)):
+            mamba_layer_idx = j
+            for i in range(self.stages):
 
-            # GAM forward
-            p, x, x_res = self.local_grouper_list[i](p, x.permute(0, 2, 1), x_res)  # [b,g,3]  [b,g,k,d]
-            x = self.pre_blocks_list[i](x)  # [b,d,g]
+                # GAM forward
+                p, x, x_res = self.local_grouper_list[i](p, x.permute(0, 2, 1), x_res)  # [b,g,3]  [b,g,k,d]
+                x = self.pre_blocks_list[i](x)  # [b,d,g]
 
-            x = x.permute(0, 2, 1).contiguous()
-            if not self.block_residual:
-                x_res = None
-            x_res = self.residual_proj_blocks_list[i](x_res)
-            # mamba forward
-            if self.parallel_multihead: 
-                outs = []
+                x = x.permute(0, 2, 1).contiguous()
+                if not self.block_residual:
+                    x_res = None
+                x_res = self.residual_proj_blocks_list[i](x_res)
+                # mamba forward
                 for layer in self.mamba_blocks_list[i]:
                     p, x, x_res = self.serialization_func(p, x, x_res, self.mamba_layers_orders[mamba_layer_idx])
-                    x, x_res = layer(x, x_res)
-                    outs.append(x)
+                    if self.use_windows:
+                        p, x, x_res, n_windows, p_base = self.pre_split_windows(
+                            p, x, x_res, windows_size=self.windows_size[i])
+                    if self.mamba_pos:
+                        if self.pos_type == 'share':
+                            if self.block_pos_share:
+                                x = x + self.pos_proj(p)
+                            else:
+                                x = x + self.pos_proj[i](p)
+                        else:
+                            x = x + self.pos_proj[pos_proj_idx](p)
+                            pos_proj_idx += 1
+                    if self.use_order_prompt:
+                        layer_order_prompt_indexes = self.per_layer_prompt_indexe[mamba_layer_idx]
+                        layer_order_prompt = self.order_prompt.weight[
+                                            layer_order_prompt_indexes[0]: layer_order_prompt_indexes[1]]
+                        layer_order_prompt = self.order_prompt_proj[i](layer_order_prompt)
+                        layer_order_prompt = layer_order_prompt.unsqueeze(0).repeat(p.shape[0], 1, 1)
+                        x = torch.cat([layer_order_prompt, x, layer_order_prompt], dim=1)
+                        if x_res is not None:
+                            x_res = torch.cat([layer_order_prompt, x_res, layer_order_prompt], dim=1)
+                        x, x_res = layer(x, x_res)
+                        x = x[:, self.promot_num_per_order:-self.promot_num_per_order]
+                        x_res = x_res[:, self.promot_num_per_order:-self.promot_num_per_order]
+                    else:
+                        x, x_res = layer(x, x_res)
+                    if self.use_windows:
+                        p, x, x_res = self.post_split_windows(p, x, x_res, n_windows, p_base)
                     mamba_layer_idx += 1
-                x = torch.cat(outs, dim=-1)
-                x = self.multihead_projection[i](x)
-            else: 
-                for layer in self.mamba_blocks_list[i]:
-                    p, x, x_res = self.serialization_func(p, x, x_res, self.mamba_layers_orders[mamba_layer_idx])
-                    x, x_res = layer(x, x_res)
-                    mamba_layer_idx += 1
-
-
-
-                # if self.use_windows:
-                #     p, x, x_res, n_windows, p_base = self.pre_split_windows(
-                #         p, x, x_res, windows_size=self.windows_size[i])
-                # if self.mamba_pos:
-                #     if self.pos_type == 'share':
-                #         if self.block_pos_share:
-                #             x = x + self.pos_proj(p)
-                #         else:
-                #             x = x + self.pos_proj[i](p)
-                #     else:
-                #         x = x + self.pos_proj[pos_proj_idx](p)
-                #         pos_proj_idx += 1
-                # if self.use_order_prompt:
-                #     layer_order_prompt_indexes = self.per_layer_prompt_indexe[mamba_layer_idx]
-                #     layer_order_prompt = self.order_prompt.weight[
-                #                          layer_order_prompt_indexes[0]: layer_order_prompt_indexes[1]]
-                #     layer_order_prompt = self.order_prompt_proj[i](layer_order_prompt)
-                #     layer_order_prompt = layer_order_prompt.unsqueeze(0).repeat(p.shape[0], 1, 1)
-                #     x = torch.cat([layer_order_prompt, x, layer_order_prompt], dim=1)
-                #     if x_res is not None:
-                #         x_res = torch.cat([layer_order_prompt, x_res, layer_order_prompt], dim=1)
-                #     x, x_res = layer(x, x_res)
-                #     x = x[:, self.promot_num_per_order:-self.promot_num_per_order]
-                #     x_res = x_res[:, self.promot_num_per_order:-self.promot_num_per_order]
-                # else:
-                #     x, x_res = layer(x, x_res)
-                # if self.use_windows:
-                #     p, x, x_res = self.post_split_windows(p, x, x_res, n_windows, p_base)
                 
-            x = x.permute(0, 2, 1).contiguous()
+                x = x.permute(0, 2, 1).contiguous()
+                # in PCM, this is only a nn.Identity
+                x = self.pos_blocks_list[i](x)  # [b,d,g]
+                print(i, j, x.shape)
+            x_list.append(x)
 
-            # in PCM, this is only a nn.Identity
-            x = self.pos_blocks_list[i](x)  # [b,d,g]
+        # bad? change later
+        for i, x in enumerate(x_list):
+            if self.cls_pooling == "max":
+                x_list[i] = F.adaptive_max_pool1d(x, 1).squeeze(dim=-1)
+            elif self.cls_pooling == "mean":
+                x_list[i] = x.mean(dim=-1, keepdim=False)
+            else:
+                x_max = F.adaptive_max_pool1d(x, 1).squeeze(dim=-1)
+                x_mean = x.mean(dim=-1, keepdim=False)
+                x_list[i] = x_max + x_mean
+            print(x_list[i].shape)
 
-        if self.cls_pooling == "max":
-            x = F.adaptive_max_pool1d(x, 1).squeeze(dim=-1)
-        elif self.cls_pooling == "mean":
-            x = x.mean(dim=-1, keepdim=False)
-        else:
-            x_max = F.adaptive_max_pool1d(x, 1).squeeze(dim=-1)
-            x_mean = x.mean(dim=-1, keepdim=False)
-            x = x_max + x_mean
+        x = torch.cat(x_list, dim=-1)
+        print(x.shape)
+        x = self.proj(x)
+        print(x.shape)
         return x
 
     def forward_seg_feat(self, p, x=None):
@@ -634,4 +626,3 @@ class PointMambaDecoder(nn.Module):
         global_context = self.gmp_map_end(torch.cat(gmp_list, dim=1))  # [b, gmp_dim, 1]
         x = torch.cat([x, global_context.repeat([1, 1, x.shape[-1]]), ], dim=1)
         return x
-

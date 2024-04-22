@@ -10,12 +10,15 @@ params:
     _target_: models.PCM.PCM.PointMambaEncoder
     in_channels: ${..in_channels}
     embed_dim: 64
-    mamba_blocks: [3, 3, 3, 3]
-    mamba_layers_orders: ["xyz", "yxz", "zyx", 
-                          "xyz", "yxz", "zyx", 
-                          "xyz", "yxz", "zyx", 
-                          "xyz", "yxz", "zyx"] 
-    parallel_multihead: False
+    mamba_blocks: [1]
+    dim_expansion: [1]
+    pre_blocks: [1]
+    pos_blocks: [0]
+    k_neighbors: [1]
+    reducers: [2]
+
+    mamba_layers_orders: ["xyz", "yxz", "zyx"] 
+    parallel_multihead: True
 
 
 optimizer:
@@ -25,7 +28,7 @@ optimizer:
 
 warmup_epochs: 1
 
-batch_size: 3
+batch_size: 1
 
 # scheduler: cosine
 scheduler: step
