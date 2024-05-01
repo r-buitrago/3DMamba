@@ -1,0 +1,67 @@
+name: PCMSeg
+
+params:
+  _target_: models.segmentation.BaseSeg
+  test_crop: 24576
+  in_channels: 5
+  num_classes: ${dataset.params.num_classes}
+  embedding_size: 1024 # 16 x 16, 16 is x2 dim_expansion
+  hidden_dim: 256
+  encoder_args:
+    in_channels: 5
+    embed_dim: 64
+    # groups: 1
+    # res_expansion: 1.0
+    # activation: "relu"
+    # bias: False
+    use_xyz: True
+    # normalize: "anchor"
+    dim_expansion: [ 1, 2, 2, 2 ]
+    # pre_blocks: [ 1, 1, 1, 1 ]
+    mamba_blocks: [ 3, 3, 3, 3 ]
+    # pos_blocks: [ 0, 0, 0, 0 ]
+    # k_neighbors: [ 12, 12, 12, 12 ]
+    # reducers: [ 4, 4, 2, 2 ]
+    # rms_norm: True
+    residual_in_fp32: True
+    fused_add_norm: True
+    bimamba_type: "v2"
+    # drop_path_rate: 0.1
+    mamba_pos: True
+    mamba_layers_orders: [ "xyz", "xzy", "yxz", 
+                           "yzx", "zxy", "zyx", 
+                           "hilbert", "z", "z-trans",
+                           "xyz", "xzy", "yxz"]
+    parallel_multihead: True
+    # use_order_prompt: True
+    # prompt_num_per_order: 6
+    # use_windows: True
+    # windows_size: [1024, 512, 256, 128]
+    # grid_size: 0.04
+    # combine_pos: True
+  decoder_args:
+    encoder_channel_list: [ 64, 64, 128, 256, 512 ]
+    decoder_channel_list: [ 256, 128, 64, 64 ]
+    decoder_blocks: [ 1, 1, 1, 1 ]
+    mamba_blocks: [ 0, 0, 0, 0 ]
+    mamba_layers_orders: [ ]
+  cls_args:
+    global_feat: max,avg  # append global feature to each point feature
+    num_classes: ${dataset.params.num_classes}
+    in_channels: null
+    norm_args:
+      norm: 'bn'
+
+optimizer:
+  _target_: torch.optim.Adam
+  lr: 0.001
+  weight_decay: 0.0
+
+warmup_epochs: 1
+
+batch_size: 1
+
+# scheduler: cosine
+scheduler: step
+step_size: 150
+gamma: 0.5
