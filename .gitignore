@@ -162,6 +162,6 @@ notebooks/raw/*
 notebooks/subset/*
 .vscode/*
 
+outputs/
 wandb/
-
 data/
