@@ -1,3 +1,4 @@
+import math
 import sys, os
 import numpy as np
 import hydra
@@ -59,11 +60,23 @@ def get_loss_value(loss_type):
     elif loss_type == "focal":
         return FocalLoss()
     elif loss_type == "weighted_cross_entropy":
-        weights = torch.FloatTensor([1116.6474006846588, 3.446345210754423, 320.1453483064001, 60983.51304347826, 9933.57507082153, 3424.3671875, 219159.5, 3.446345210754423, 3.446345210754423, 253.64765452638431, 292212.6666666667, 6116.968163977323, 2260.1044150821785, 3133.6478999106344, 9587.291866028709, 346.0185514110914, 472.3583215464404, 26.90946344944814, 356.9009669211196, 3.446345210754423, 3.446345210754423, 2089.409801876955, 1096.911550793775, 46.10335465464084, 3.446345210754423, 93.41277230558164, 18.779105776504373, 20.137378934885415, 6.78386039751691, 839.390065828845, 8.960875809443982, 3.8674658465312164])
+        counts = np.array([1.256100e+04, 0.000000e+00, 4.381200e+04, 2.300000e+02,
+        1.412000e+03, 4.096000e+03, 6.400000e+01, 0.000000e+00,
+        0.000000e+00, 5.529800e+04, 4.800000e+01, 2.293000e+03,
+        6.206000e+03, 4.476000e+03, 1.463000e+03, 4.053600e+04,
+        2.969400e+04, 5.212370e+05, 3.930000e+04, 0.000000e+00,
+        0.000000e+00, 6.713000e+03, 1.278700e+04, 3.042340e+05,
+        4.069879e+06, 1.501530e+05, 7.469050e+05, 6.965260e+05,
+        2.067585e+06, 1.671000e+04, 1.565272e+06, 3.626718e+06,
+        0.000000e+00])
+        ratio = counts.sum() / counts
+        ratio[ratio == math.inf] = ratio.min()
+        ratio = ratio[:-1]
+        weights = torch.FloatTensor(ratio)
         weights = weights.to(device)
-        weights = weights / 2.5
-        weights = F.softmax(weights)
-        return torch.nn.CrossEntropyLoss(reduction="sum", weight=weights)
+        log_weights = torch.log(weights)
+        log_weights = log_weights / log_weights.sum()
+        return torch.nn.CrossEntropyLoss(reduction="sum", weight=log_weights)
     else:
         raise ValueError(f"Loss type {loss_type} not supported")
 
