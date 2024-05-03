@@ -35,6 +35,17 @@ class NuScenesLidarDataset(Dataset):
                 self.available_samples = self.available_samples[:split]
             else:
                 self.available_samples = self.available_samples[split:]
+    
+    def get_class_distribution(self):
+        class_distribution = np.zeros(self.num_classes + 1)
+        for sample in self.available_samples:
+            lidar_token = sample['data']['LIDAR_TOP']
+            lidarseg_filepath = os.path.join(self.lidarseg_path, lidar_token + '_lidarseg.bin')
+            labels = np.fromfile(lidarseg_filepath, dtype=np.uint8)
+            unique, counts = np.unique(labels, return_counts=True)
+            for u, c in zip(unique, counts):
+                class_distribution[u] += c
+        return class_distribution
 
     def __len__(self):
         return len(self.available_samples)
