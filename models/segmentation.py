@@ -17,7 +17,7 @@ class SegmentationHead(nn.Module):
         self.mlp_out = nn.Sequential(
             nn.Linear(embedding_size + hidden_dim, hidden_dim),
             nn.ReLU(),
-            nn.Linear(hidden_dim, num_classes+1),
+            nn.Linear(hidden_dim, num_classes),
         )
     
     def forward(self, x):

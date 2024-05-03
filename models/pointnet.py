@@ -59,7 +59,7 @@ class PointNetSeg(nn.Module):
         self.conv5 = nn.Conv1d(32, 16, 1)
         self.bn5 = nn.BatchNorm1d(16)
 
-        self.conv6 = nn.Conv1d(16, num_classes + 1, 1) # +1 for dummy class
+        self.conv6 = nn.Conv1d(16, num_classes, 1) # +1 for dummy class
 
     def forward(self, inp):
         x = inp
