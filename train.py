@@ -76,6 +76,7 @@ def get_loss_value(loss_type):
         weights = weights.to(device)
         log_weights = torch.log(weights)
         log_weights = log_weights / log_weights.sum()
+        log_weights = log_weights * log_weights.shape[0]
         return torch.nn.CrossEntropyLoss(reduction="sum", weight=log_weights)
     else:
         raise ValueError(f"Loss type {loss_type} not supported")

@@ -6,7 +6,7 @@
 #SBATCH --mem=16GB
 #SBATCH --time=30:00:00
 #SBATCH --gres=gpu:1
-#SBATCH -o out_logs/point-net_weighted1.log
+#SBATCH -o out_logs/point-net_weighted2.log
 
 eval "$(conda shell.bash hook)"
 conda activate 3dmamba
