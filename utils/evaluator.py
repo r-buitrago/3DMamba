@@ -106,7 +106,7 @@ class LossAccuracyEvaluator(Evaluator):
     def _evaluate(self, y_pred, y_true):
         ''' y_pred:  (B, N, C) '''
         B, N, C = y_pred.shape
-        loss = self.loss_fn(y_pred.reshape(B*N, C), y_true.reshape(B*N, C))
+        loss = self.loss_fn(y_pred.reshape(B*N, C), y_true.reshape(B*N, C+1)[:,:-1])
         self.eval_dict["Loss/loss"] += loss.item() / N
         # accuracy
         _, predicted = torch.max(y_pred.data, dim=-1)
@@ -122,7 +122,7 @@ class LossAccuracyByClassEvaluator(Evaluator):
     def _evaluate(self, y_pred, y_true):
         ''' y_pred:  (B, N, C) '''
         B, N, C = y_pred.shape
-        loss = self.loss_fn(y_pred.reshape(B*N, C), y_true.reshape(B*N, C))
+        loss = self.loss_fn(y_pred.reshape(B*N, C), y_true.reshape(B*N, C+1)[:,:-1])
         self.eval_dict["Loss/loss"] += loss.item() / N
         # accuracy
         _, predicted = torch.max(y_pred.data, dim=-1)
@@ -177,7 +177,7 @@ class MIOU_Evaluator(Evaluator):
         B, N, C = y_pred.shape
         self.total_points += B*N
         # loss calculation, I am doing it slightly differently than before
-        loss = self.loss_fn(y_pred.reshape(B*N, C), y_true.reshape(B*N,C))
+        loss = self.loss_fn(y_pred.reshape(B*N, C), y_true.reshape(B*N,C+1)[:,:-1])
         self.eval_dict["Loss/loss"] += loss.item()
         # MIOU calculation
         _, predicted = torch.max(y_pred.data, dim=-1)

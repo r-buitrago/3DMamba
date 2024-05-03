@@ -2,7 +2,7 @@ defaults:
   - _self_
   - model: pointnet++
   - dataset: nuscenes_lidar
-  - loss: cross_entropy
+  - loss: weighted_cross_entropy
   - evaluator: multiple
   
 seed: 33
