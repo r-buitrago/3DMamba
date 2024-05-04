@@ -1,12 +1,12 @@
 defaults: 
   - _self_
-  - model: pointnet++
-  - dataset: nuscenes_lidar
-  - loss: weighted_cross_entropy
+  - model: PCM6
+  - dataset: nuscenes_lidar_v1.0
+  - loss: cross_entropy
   - evaluator: multiple
   
 seed: 33
-num_epochs: 100
+num_epochs: 200
 log_frequency: 50
 evaluate_frequency: 1
 
@@ -22,7 +22,7 @@ project_name: 3DMamba
 wandb:
   tags: []
   project: ${..project_name}
-  group: 'tmp'
+  group: 'final_PCM6'
   name: '${model.name}_${dataset.name}_${now:%Y-%m-%d_%H-%M-%S}'
   entity: 'vlr-3dmamba'
 

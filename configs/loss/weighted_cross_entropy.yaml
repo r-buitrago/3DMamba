@@ -1,1 +1,1 @@
-type: weighted_cross_entropy
+loss_type: weighted_cross_entropy

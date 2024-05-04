@@ -4,24 +4,25 @@ params:
   _target_: models.segmentation.SegmentationHead
   in_channels: 5
   num_classes: ${dataset.params.num_classes}
-  embedding_size: 1024 # 16 x 16, 16 is x2 dim_expansion
-  hidden_dim: 256
+  embedding_size: 512 # 16 x 16, 16 is x2 dim_expansion
+  hidden_dim: 128
   encoder: 
     _target_: models.PCM.PCM.PointMambaEncoder
     in_channels: ${..in_channels}
-    embed_dim: 64
+    embed_dim: 32
     mamba_blocks: [3, 3, 3, 3]
     mamba_layers_orders: ["xyz", "yxz", "zyx", 
                           "xyz", "yxz", "zyx", 
                           "xyz", "yxz", "zyx", 
                           "xyz", "yxz", "zyx"] 
-    parallel_multihead: False
+    parallel_multihead: True
 
 
 optimizer:
   _target_: torch.optim.Adam
   lr: 0.001
   weight_decay: 0.0
+clip_gradients: True
 
 warmup_epochs: 1
 
@@ -29,6 +30,6 @@ batch_size: 3
 
 # scheduler: cosine
 scheduler: step
-step_size: 150
+step_size: 30
 gamma: 0.5
 

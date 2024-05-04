@@ -12,7 +12,8 @@ optimizer:
 
 warmup_epochs: 1
 
-batch_size: 2
+batch_size: 16
+clip_gradients: True
 
 # scheduler: cosine
 scheduler: step

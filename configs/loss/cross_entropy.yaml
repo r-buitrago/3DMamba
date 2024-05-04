@@ -1,1 +1,1 @@
-type: cross_entropy
+loss_type: cross_entropy

@@ -1,0 +1,41 @@
+name: PCM6
+
+params:
+  _target_: models.segmentation.SegmentationHead
+  in_channels: 5
+  num_classes: ${dataset.params.num_classes}
+  embedding_size: 128 # 16 x 16, 16 is x2 dim_expansion
+  hidden_dim: 32
+  encoder: 
+    _target_: models.PCM.PCM.PointMambaEncoder
+    in_channels: ${..in_channels}
+    embed_dim: 8
+    mamba_blocks: [6, 6, 6, 6]
+    dim_expansion: [2,2,2,2]
+    pre_blocks: [2,2,2,2]
+    pos_blocks: [2,2,2,2]
+    k_neighbors: [12,12,12,12]
+    k_strides: [1,1,1,1]
+    reducers: [2,2,2,2]
+    mamba_layers_orders: ["xyz", "xzy", "yxz", "yzx", "zxy", "zyx", 
+                          "xyz", "xzy", "yxz", "yzx", "zxy", "zyx", 
+                          "xyz", "xzy", "yxz", "yzx", "zxy", "zyx",
+                          "xyz", "xzy", "yxz", "yzx", "zxy", "zyx",
+                          ]
+    parallel_multihead: True
+
+
+optimizer:
+  _target_: torch.optim.Adam
+  lr: 0.002
+  weight_decay: 0.0
+
+warmup_epochs: 1
+
+batch_size: 3
+
+# scheduler: cosine
+scheduler: step
+step_size: 20
+gamma: 0.5
+

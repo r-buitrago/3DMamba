@@ -1,1 +1,2 @@
-type: focal
+loss_type: focal
+gamma: 0.01

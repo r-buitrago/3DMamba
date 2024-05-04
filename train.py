@@ -16,7 +16,7 @@ from utils.evaluator import DummyEvaluator, eval_to_print, eval_to_wandb
 from utils.utils import count_params
 from utils.scheduler import WarmupScheduler
 
-from utils.loss import FocalLoss
+from utils.loss import FocalLoss, CrossEntropyBatchWeighted
 
 from torch.utils.data import DataLoader
 
@@ -42,7 +42,7 @@ def learning_step(
 ):
     x, y = batch
     x, y = x.to(device), y.to(device)
-    loss_fn = get_loss_value(loss_type)
+    loss_fn = get_loss_value(**args.loss)
     out = model(x)
     one_hot =  F.one_hot(y.long(), num_classes = args.dataset.params.num_classes + 1).float() # +1 for dummy class
     B, N, C = out.shape
@@ -52,13 +52,13 @@ def learning_step(
     return loss
 
 
-def get_loss_value(loss_type):
+def get_loss_value(loss_type, **kwargs):
     if loss_type == "mse":
         return torch.nn.MSELoss(reduction="sum")
     elif loss_type == "cross_entropy":
         return torch.nn.CrossEntropyLoss(reduction="sum")
     elif loss_type == "focal":
-        return FocalLoss()
+        return FocalLoss(kwargs["gamma"])
     elif loss_type == "weighted_cross_entropy":
         counts = np.array([1.256100e+04, 0.000000e+00, 4.381200e+04, 2.300000e+02,
         1.412000e+03, 4.096000e+03, 6.400000e+01, 0.000000e+00,
@@ -78,6 +78,8 @@ def get_loss_value(loss_type):
         log_weights = log_weights / log_weights.sum()
         log_weights = log_weights * log_weights.shape[0]
         return torch.nn.CrossEntropyLoss(reduction="sum", weight=log_weights)
+    elif loss_type == "cross_entropy_batch_weighted":
+        return CrossEntropyBatchWeighted()
     else:
         raise ValueError(f"Loss type {loss_type} not supported")
 
@@ -90,6 +92,7 @@ def train(
     loss_type,
     scheduler=None,
     evaluator=DummyEvaluator,
+    clip_gradients=False,
 ):
     model.train()
     t1 = default_timer()
@@ -104,6 +107,8 @@ def train(
         )
         optimizer.zero_grad()
         loss.backward()
+        if clip_gradients: 
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
         optimizer.step()
         if scheduler is not None:
             scheduler.step()
@@ -173,6 +178,16 @@ def _main(args: DictConfig):
             args.workdir.name,
         )
         os.makedirs(model_folder_path, exist_ok=True)
+
+    loss_type = args.loss.loss_type
+    train_evaluator = instantiate(
+        args.evaluator.train, loss_fn=get_loss_value(**args.loss)
+    )
+    test_evaluator = instantiate(
+        args.evaluator.test, loss_fn=get_loss_value(**args.loss)
+    )
+
+
     train_loader, test_loader = get_dataset(args, batch_size=args.model.batch_size)
 
     x, y = next(iter(test_loader))
@@ -218,13 +233,8 @@ def _main(args: DictConfig):
             base_scheduler=scheduler,
         )
 
-    loss_type = args.loss.type
-    train_evaluator = instantiate(
-        args.evaluator.train, loss_fn=get_loss_value(loss_type)
-    )
-    test_evaluator = instantiate(
-        args.evaluator.test, loss_fn=get_loss_value(loss_type)
-    )
+
+    clip_gradients = args.model.get("clip_gradients", False)
 
     for epoch in range(args.num_epochs):
         model, train_time = train(
@@ -235,6 +245,7 @@ def _main(args: DictConfig):
             loss_type,
             scheduler,
             evaluator=train_evaluator,
+            clip_gradients=clip_gradients,
         )
         if epoch % args.evaluate_frequency == 0:
             test_time = test(

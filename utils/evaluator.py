@@ -34,7 +34,7 @@ def eval_to_print(eval_dict: Dict[str, Dict[str, float]], is_train: bool):
     print_msg = ""
     suffix = "train" if is_train else "test"
     for key, val in eval_dict.items():
-        if key.startswith("Loss") or key.startswith("Accuracy/accuracy"):
+        if key.startswith("Loss") or key.startswith("MIOU/miou") or key.startswith("Accuracy/accuracy"):
             print_msg += f" | {key}_{suffix} {val:.5f}"
     return print_msg
 
